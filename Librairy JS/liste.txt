@@ -1,0 +1,49 @@
+One page site on scroll
+https://michalsnik.github.io/aos/
+
+------------------------------------------------
+
+Animation librairy
+https://animejs.com/
+
+------------------------------------------------
+
+ajouter une map à votre site ;
+chercher une localisation et l’afficher ;
+remplir un formulaire avec le champ adresse.
+https://github.com/algolia/places
+
+------------------------------------------------
+
+simplifie le processus de validation des formulaires
+https://parsleyjs.org/
+
+------------------------------------------------
+
+carousel Template
+https://kenwheeler.github.io/slick/
+
+------------------------------------------------
+
+Gradient Animation
+https://sarcadass.github.io/granim.js/
+
+------------------------------------------------
+
+3d Animation
+https://threejs.org/
+
+------------------------------------------------
+
+Interface Utilisateur simplifie
+https://fr.reactjs.org/
+
+------------------------------------------------
+
+Librairy pour gestion BDD PHP
+https://kinsta.com/fr/blog/adminer/
+
+------------------------------------------------
+
+Slider JS efficace
+https://swiperjs.com/
