@@ -1,0 +1,32 @@
+
+@import url('http://fonts.cdnfonts.com/css/sambats');
+/* font-family: 'Sambats', sans-serif; */
+
+@import url('http://fonts.cdnfonts.com/css/apalu');
+/* font-family: 'Apalu', sans-serif; */
+                                    
+@import url('http://fonts.cdnfonts.com/css/boismen');
+/* font-family: 'Boismen', sans-serif; */
+
+@import url('http://fonts.cdnfonts.com/css/phitagate');
+/* font-family: 'Phitagate', sans-serif; */
+
+
+@import url('http://fonts.cdnfonts.com/css/arayara-demo');
+/* font-family: 'Arayara demo', sans-serif; */
+
+@import url('http://fonts.cdnfonts.com/css/sinestra-signature');
+/* font-family: 'Sinestra Signature', sans-serif; */
+
+            
+@import url('http://fonts.cdnfonts.com/css/valkry');
+
+
+
+H1{
+    /* font-family: 'Phitagate', sans-serif; */
+    /* font-family: 'Apalu', sans-serif;    */
+    font-family: 'Valkry', sans-serif;
+                                                
+    font-weight: 400;
+}
