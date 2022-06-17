@@ -1,0 +1,314 @@
+<!-- 
+contenu du ficher de connexion db
+<?php //$connexion = mysql_connect('adresse serveur mysql','utilisateur','mot de passe') OR die(mysql_error());;
+//mysql_select_db('nom de la base de donnees',$connexion);
+?>
+-->
+
+<!-- 
+La creation et le remplissage des tables de la db ne sont pas gere ici
+vous devez le faire manuellement
+Le code du bouton d'envoi a PayPal provient du site PayPal, j'ai juste ajoute la boucle PHP pour gerer le multi produits
+-->
+
+
+
+
+
+
+<form method="post" name="facture" action="<?php echo $PHP_SELF."#bouton"; ?>">
+			<input type='submit' name='action' value='Calculer'>
+			<table class="t1" summary="Formulaire devis facture">
+				<tr>
+					<td class="c4" style="width : 50%;" >Type de prestation</td>
+					<td class="c4" style="width : 17%;" >Quantités</td>
+					<td class="c4" style="width : 33%;" >Total ligne</td>
+				</tr>
+
+					<!-- debut script php -->
+					<?php
+					  echo "\n\n\n\n\n\n<!--\n
+					  #############################################################################################\n
+					  # script de panier PayPal avec stockage des produits mysql et envoi du detail au panier PayPal\n
+					  # gestion des frais de traitement livraison\n
+					  # demande de devis possible avec envoi par mail au demandeur et au gestionaire du site\n
+					  #############################################################################################\n\n
+					  #############################################################################################\n
+					  # Ce script a ete developpe par 2AIDE, vous vous sera fourni gratuitement sur simple demande depuis le site http://www.2aide.fr/\n
+					  # Aucun support supplementaire ne vous sera propose gratuitement\n
+					  # Vous pouvez malgre tout solliciter une aide dans le cadre des prestations proposees sur le site http://www.2aide.fr/\n
+					  # Bien qu'il en soit maintenant tres eloigne ce script a ete inspire, au depart par un formulaire de contact propose gratuitement lui aussi.\n
+					  # 2aide remercie donc http://www.patrickhamy.net/ auteur de ce formulaire de contact\n
+					  #############################################################################################\n\n
+					  #############################################################################################\n
+					  # A vous de voir pour les css\n
+					  # Je precise juste que la classe masimp est declaree dans une feuille de style dediee a l'impression: media=print\n
+					  # Si vous utilisez ce code merci de laisser ces remarques\n
+					  #############################################################################################\n
+					  --> \n\n\n\n\n ";
+					  
+						include ('FICHIER DE CONNEXION DB');
+						$produit = 'SELECT * FROM `produits` WHERE vente = 1 ORDER BY cat, id';
+						$liste = mysql_query( $produit,$connexion );
+
+						$trans = array ( "&egrave;" => "e", "&eacute;" => "e", "&agrave;" => "a", "&ecirc;" => "e", "&frac12;" => "1/2", "&ocirc;" => "o", "&ccedil;" => "c", "&Egrave;" => "E", "&Eacute;" => "E", "&Agrave;" => "A", "&Ecirc;" => "E", "&Ocirc;" => "O", "&Ccedil;" => "C"); //suppression des accents pour formulaire transmit a PayPal car probleme avec codage des caracteres
+						$tota1 = array(0);
+						$frais1 = array(0);
+						$prod1 = array(0);
+						$prix1 = array(0);
+						$quant = array(0);
+						$mail = array(0);
+						$numprod = 0;
+						$i = 0;
+						if (isset($_POST[$var])) $_POST[$var]="0";
+						while ($tablo = mysql_fetch_array($liste)) 
+						{
+							if (!isset($_POST[$var])) $_POST[$var]="0";
+							$i++; //Incrementee a chaques tour de boucle WHILE
+							$var = 'var'.$i; //Construction des variables POST du formulaire
+
+							if ( $_POST["reset"] =="on" ) // reset des variables formulaires
+							{
+							  $_POST[$var]= "0";
+							  $_POST['nom']= "0";
+							  $_POST['prenom']= "0";
+							  $_POST['message']= "0";
+							  $_POST['email']= "0";
+							  $_POST["envoi"] ="";
+							} //Vide tous les champs du formulaire
+
+							if ($_POST[$var]> "0") // si nombre d'articles commande superieurs a 0 pour une ligne
+							{ 
+							  $numprod++; // compte le nombre d'articles selectionnes
+							} // Creation de la variable de generation item pour les variables produits du bouton PayPal
+
+							$prod  = $tablo['designation']; // designation des articles
+							$prodnohtm = strip_tags($prod); // supression des balises html dans designation des articles
+							$proddec = html_entity_decode($prodnohtm, null, 'UTF-8'); // remplacement des entites html par le caractere accentue
+							$prodno = strtr($prodnohtm, $trans); // remplacement des caracteres accentues par le caractere normal le plus proche ( supression des accents) pour formulaire transmit a PayPal							
+							$prix = $tablo['prix']; // designation des articles
+
+							if ($_POST[$var]> "0") // nombre d'articles commande superieurs a 0 pour une ligne 
+							{ 
+							  $prod1[$numprod] = $prodno; //inscrit tous les produits selectionnes dans une variable tableau
+							  $quant[$numprod] = $_POST[$var]; //inscrit toutes les quantites produits selectionnes dans une variable tableau
+							  $prix1[$numprod] = $prix; //inscrit tout les prix produits selectionnes dans une variable tableau
+							}
+
+							$trait = $tablo['traitement']; //variable frais de livraison-traitement oui ou non
+							
+							if ($prix<>0) //verifie qu'un prix ne soit pas egal a 0
+							{
+							  $prixht = ($prix/1.196)*$_POST[$var]; //calcule le prix ht a partir du ttc
+							}
+
+							$tva = round(($prixht*0.196),2); //calcule le montant de la TVA
+							$type = $tablo['type']; //affectation du produit creation web ou depannage
+
+							$total1[$i] = $prix*$_POST[$var]; //inscrit le prix total de chaque ligne dans une variable tableau
+
+							if ($trait==1 && $prix*$_POST[$var]<>0) //si frais de livraison-traitement oui et nombre de produits x par prix >0
+							{
+							  $fraisunit = ((($prix*$_POST[$var])/100)*3.4)+0.25; //calcule les frais de traitement
+							}
+							else {$fraisunit = 0;} //si pas de frais de traitement la variable est egale a 0
+
+							$frais1[$i] = $fraisunit; //inscrit les frais de traitement de chaque ligne dans une variable tableau
+
+							if ( $trait == 1) //si frais de traitement oui
+							{
+							  $note = "+ frais de traitement"; //texte affiche pour frais de traitement oui
+							} 
+							else { $note = "pas de frais de traitement";} //texte affiche pour frais de traitement non
+
+							if ($_POST[$var] > 0) // si nombre de produits >0
+							{ 
+							  $imp = ""; // autorisation d'impression de la ligne
+							}
+							else { $imp = "class='masimp' ";} // interdiction d'impression de la ligne
+
+							if ( $_POST["reset"] =="on" ) // si demande remise a 0 du formulaire
+							{
+							  $chk = 'checked="checked"'; // je force la case afficher les produits choisis a cochee
+							  $chk1 = 'checked="checked"'; // je force la case afficher les produits non choisis a cochee
+							  $vu = ""; //je ne cache aucune ligne
+							}
+							else //pas de demande de remise a 0 du formulaire
+							{
+								if ($_POST[$var] > 0 AND $_POST["masq"] !="on" AND $_POST["envoi"] !="on" ) //si nombre de produit > 0 ET case afficher les produits choisis pas cochee ET case envoyer demande de devis cochee
+								{
+								  $vu = 'style="display : none;"'; //je n'affiche pas la ligne
+								}
+								
+								if ($_POST[$var] > 0 AND $_POST["masq"] =="on" ) //si nombre de produit > 0 ET case afficher les produits choisis cochee
+								{
+								  $vu = ""; //j'affiche la ligne
+								}
+
+								if ($_POST[$var] == 0 AND ($_POST["masq1"] !="on" OR $_POST["envoi"] =="on") ) //si nombre de produit = 0 ET case afficher les produits non choisis pas cochee ou case envoyer demande de devis cochee
+								{
+								  $vu = 'style="display : none;"'; //je n'affiche pas la ligne
+								}
+
+								if ($_POST[$var] == 0 AND ($_POST["masq1"] =="on"  AND $_POST["envoi"] !="on")) //si nombre de produit = 0 ET case afficher les produits non choisis cochee et case envoyer demande de devis pas cochee
+								{
+								  $vu = ""; //j'affiche la ligne
+								}
+
+								 if ($_POST["masq1"] !="on" AND $_POST["masq"] !="on" ) //si les cases afficher produits choisis et non choisis sont cochees
+								{
+								  $vu = ""; //j'affiche la ligne
+								}
+
+								if ( $_POST["masq"] =="on" OR $_POST["envoi"] =="on" ) //si case afficher les produits choisis cochee OU case envoyer demande de devis cochee
+								{
+								  $chk = 'checked="checked"'; //valeur par defaut de la case afficher les produits choisis a cochee
+								}
+								else { $chk = "";} //sinon valeur par defaut de la case afficher les produits choisis a pas cochee
+								
+								if ( $_POST["masq1"] =="on" AND $_POST["envoi"] !="on" ) //si case afficher les produits non choisis cochee ET case envoyer demande de devis pas cochee
+								{
+								  $chk1 = 'checked="checked"'; //valeur par defaut de la case afficher les produits non choisis a cochee
+								}
+								else { $chk1 = "";} //sinon valeur par defaut de la case afficher les produits non choisis a pas cochee
+							}
+
+							$code = "				<tr ".$imp.$vu.">\n"; // generation du code du tableau de produits
+							    $code .="					<td class='c1'>\n";
+								$code .="					  <label>&nbsp;".$prod.": <span class='def' title='".round(($prix/1.196),2)."&euro;HT'>".$prix."&euro;<sup>TTC</sup></span></label>\n";
+								$code .="					</td>\n";
+								$code .="					<td class='c2'>\n";
+								$code .="					  <input style='text-align : right;' type='text' name='".$var."' size='3' value='".$_POST[$var]."'>\n";
+								$code .="					</td>\n";
+								$code .="					<td class='c2' >\n";
+								$code .="					  ".round(($prixht),2)."&euro;<sup>HT</sup> + ".$tva."&euro; de TVA\n";
+								$code .="					  <br>".$note."\n";
+								$code .="					</td>\n";
+								$code .="				</tr>\n";
+
+							if ($_POST[$var]> "0")
+							{
+							  $mail[$numprod] = $code; // inscription du code du tableau de produit dans une variable tableau
+							}
+
+							echo $code; // affichage  du code du tableau de produits
+						}
+
+						$total = array_sum($total1); // Je fais le total des totaux de chaque ligne
+						$totalht = round(($total/1.196),2); // j'extrait le total global HT et j'arrondi a 2 decimales
+						$frais = round(array_sum ($frais1),2); // Je fais le total des frais de chaque ligne et j'arrondi a 2 decimales
+						$totaltva = round(($total - $totalht),2); // j'extrais la TVA et j'arrondi a 2 decimales
+						$facture = round(($total + $frais),2); // je calcule le total de la facture et j'arrondi a 2 decimales
+
+						if ($total == 0 ) // si la facture est d'un montant egal a 0 euro
+						{ 
+						  $chk = 'checked="checked"'; //valeur par defaut de la case afficher les produits choisis a cochee
+						  $chk1 = 'checked="checked"'; //valeur par defaut de la case afficher les produits choisis a cochee 
+						  $env = "style='display : none;'"; // j'interdit l'affichage des options liees a un montant
+						}
+						else { $env = ""; } // sinon je n'interdit pas l'affichage des options liees a un montant
+
+						$code1 = "				<tr>\n"; // generation du code des tataux en bas de tableau
+							$code1 .= "					<td class='c1' colspan='3'>\n";
+							$code1 .= "					  <br>Total ".$totalht."&euro;<sup>HT</sup>\n";
+							$code1 .= "					  <br>".$totaltva."&euro; de TVA\n";
+							$code1 .= "					  <br>".$frais."&euro; de frais de traitement\n";
+							$code1 .= "					  <br>Soit une facture totale de :".$facture."&euro;<sup>TTC</sup>\n";
+							$code1 .= "					</td>\n";
+							$code1 .= "				</tr>\n";
+							$code1 .= "			</table>\n";
+
+						echo $code1;  // affichage du code des tataux en bas de tableau
+
+						$headers ='From: "Devis"<VOTRE@EMAIL>'."\n"; // entete email devis
+							$headers .='Content-Type: text/html; charset="utf-8"'."\n";
+							$headers .='Content-Transfer-Encoding: 8bit';
+
+						$mailtot = "<h1>Vous avez re&ccedil;u une demande de devis !</h1>\n <p>"; // generation du code du mail de devis
+							$mailtot .= $_POST["message"]."\n <br> de: ".$_POST["prenom"]."&nbsp;".$_POST["nom"];
+							$mailtot .= "<br>".$_POST["email"]."</p>\n<table>".implode($mail).$code1; // implode de la variable tableau contenant le code du tableau de produits
+
+						if ( $_POST["envoi"] =="on" ) // si demande d'envoi de devis par mail
+						{
+						  $chk2 = 'checked="checked"';	//valeur par defaut de la case afficher les produits choisis a cochee
+						  $chk = 'checked="checked"';	//valeur par defaut de la case afficher les produits choisis a cochee
+						  $chk1 = '';					//valeur par defaut de la case afficher les produits non choisis a pas cochee
+						  $action = 'Envoyer'; // texte du bouton de soumission
+
+							if ($_POST["email"]<> "" && eregi("^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*$",$_POST["email"]) ) // verification presence et vatidite de la saisie de l'email du client
+							{ 
+							  mail('VOTRE@EMAIL','Demande de devis', $mailtot, $headers); //envoi du devis au gestionnaire du site
+							  mail($_POST["email"],'Copie du devis soumis', $mailtot, $headers); //envoi du devis au client
+							  $contfor = "<div style='display : none;'>"; //masque formulaire et autre si envoi OK
+							  $contfor1 = "</div>";	//masque formulaire et autre si envoi OK
+							  $_POST["envoi"] = ""; //intitialise le formulaire de contact
+							  $_POST["nom"] = "";
+							  $_POST["prenom"] = "";
+							  $_POST["email"] = "";
+							  $_POST["message"] = "";
+							  $chk2 = "";
+							  echo "<h2>Votre demande &agrave; bien &eacute;t&eacute; envoy&eacute;e</h2>";
+							}
+							else { echo "<h3 class='masimp' >V&eacute;rifiez la saisie de votre adresse Email.</h3>"; }	//previent d'un probleme avec adresse email
+							// formulaire de contact
+							echo "<div class='masimp'>\n".$contfor."\n<label>Nom:&nbsp;<input style='text-align : left;' type='text' name='nom' size='25' value='".$_POST["nom"]."' ></label>\n";
+							echo "<br><br><label>Pr&eacute;nom:&nbsp;<input style='text-align : left;' type='text' name='prenom' size='25' value='".$_POST["prenom"]."' ></label>\n";
+							echo "<br><br><label>Email:&nbsp;<input style='text-align : left;' type='text' name='email' size='25' value='".$_POST["email"]."' ></label>\n";
+							echo "<br><br><label>Message:&nbsp;<textarea style='text-align : left;' name='message' cols='25' rows='15'>".$_POST["message"]."</textarea></label>\n".$contfor1."\n</div>\n";
+						}
+						else { $chk2 = ''; $action = 'Calculer';}	// texte du bouton de soumission
+						// diverses options d'affichage
+ 						echo "			<div class='masimp' style='width : 28em; margin-left : auto; margin-right : auto; text-align : left;' >\n\n";
+						echo "     	 	  <span ".$env."><input type='checkbox' name='envoi' ".$chk2." class='button'>&nbsp;Cochez cette case puis cliquez sur&nbsp;</span>\n";
+						echo "			  <input type='submit' name='action' value='".$action."'>\n";
+						echo "				<span ".$env.">\n";
+						echo "				  <br>pour demander un devis d&eacute;finitif\n";
+						echo "				  <br>\n";
+						echo "				  <br>\n";
+						echo "					<script type='text/JavaScript'>\n";
+						echo "					  document.write('<button onClick=\'window.print();\'\>Imprimer le devis<\/button\>');\n";
+						echo "					</script>\n";
+						echo "				  <br>\n";
+						echo "				</span>\n\n";
+						echo "				  <br>\n";
+						echo "				  <input type='checkbox' name='reset' class='button'>Cochez pour vider votre panier.\n";
+						echo "				  <br>\n";
+						echo "				  <input type='checkbox' name='masq' ".$chk." class='button'>cochez pour voir les produits que vous avez choisis.\n";
+						echo "				  <br>\n";
+						echo "				  <input type='checkbox' name='masq1' ".$chk1." class='button'>Cochez pour voir les produits non choisis.\n\n";
+						echo "			</div>\n";
+						echo "		 </form>\n";
+					?>
+
+			<div class="masimp"<?php echo $env; ?>>
+			  <br>
+			  <br>
+			  <script type="text/JavaScript">
+			  document.write('<div style=\"float : right;\"\>En cliquant sur ce bouton vous lancez une impression de vos choix<br\>ET acc&eacute;dez directement &agrave; la page de paiement.<\/div\>');
+			  </script>
+			  <noscript><div style="float : right;">En cliquant sur ce bouton vous acc&eacute;dez directement &agrave; la page de paiement.</div></noscript>
+				<div style="float : right;" onClick="window.print();" >
+					<form target="paypal" action="https://www.paypal.com/cgi-bin/webscr" method="post">
+					  <input type="image" src="URL ABSOLUE DE L'IMAGE DU BOUTON PAYPAL" name="submit" alt="PayPal - la solution de paiement en ligne la plus simple et la plus sécurisée !">
+					  <img alt="" border="0" src="https://www.paypal.com/fr_FR/i/scr/pixel.gif" width="1" height="1">
+					  <input type="hidden" name="upload" value="1">
+					  <input type="hidden" name="cmd" value="_cart">
+					  <input type="hidden" name="business" value="VOTRE CODE DE PARAINAGE OU VOTRE EMAIL IDENTIFIANT PAYPAL">
+						<?php
+							for($bouc=1; $bouc<=$numprod; $bouc++) // creation d'une boucle reiteree autant de fois q'un produit a ete choisi
+							{
+							  echo '<input type="hidden" name="item_name_'.($bouc).'" value="'.$prod1[$bouc].'">'."\n"; // transmition de la designation des produits
+							  echo '<input type="hidden" name="quantity_'.($bouc).'" value="'.$quant[$bouc].'">'."\n";  // transmition de la quantite des produits
+							  echo '<input type="hidden" name="amount_'.($bouc).'" value="'.$prix1[$bouc].'">'."\n";	// transmition du prix des produits
+							}
+						?>
+
+					  <input type="hidden" name="handling_1" value="<?php echo $frais; // transmition des frais de traitement livraison globaux ?>">
+					  <input type="hidden" name="logo_custom" value="URL ABSOLUE DE L'IMAGE DU BOUTON PAYPAL">
+					  <input type="hidden" name="no_note" value="1">
+					  <input type="hidden" name="currency_code" value="EUR">
+					  <input type="hidden" name="lc" value="FR">
+					  <input type="hidden" name="bn" value="PP-ShopCartBF">
+					</form>
+				</div>
+			</div>
